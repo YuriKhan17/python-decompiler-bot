@@ -12,7 +12,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, fil
 from decompiler_tool import analyze_python_script
 
 # Configuration
-TOKEN = "7828849465:AAGYuFRbWrbIY9TOTDG5Xy023OWXaBQdLFI"
+TOKEN = "YOUR_BOT_TOKEN"
 SAVE_DIR = "./uploads"
 RESULTS_DIR = "./decompiled_payloads"
 LOG_DIR = "./logs"
