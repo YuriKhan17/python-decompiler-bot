@@ -10,7 +10,6 @@ import inspect
 import types
 import logging
 import traceback
-import uncompyle6
 import io
 from typing import List, Dict, Any, Set, Optional, Tuple, Union
 
@@ -168,18 +167,49 @@ class BytecodeDumper:
             return f"# Not a code object: {type(code_obj)}\n"
         
         try:
-            # First attempt - use uncompyle6
-            output = io.StringIO()
+            # For Python 3.9+, we'll use a simpler approach since uncompyle6 is not compatible
+            decompiled_code = f"# Code object info:\n"
+            decompiled_code += f"# - co_name: {code_obj.co_name}\n"
+            decompiled_code += f"# - co_filename: {code_obj.co_filename}\n"
+            decompiled_code += f"# - co_firstlineno: {code_obj.co_firstlineno}\n"
+            
+            # Display code object attributes
+            decompiled_code += f"\n# Code object attributes:\n"
+            for attr in dir(code_obj):
+                if attr.startswith('co_') and not attr.startswith('co_code'):
+                    try:
+                        value = getattr(code_obj, attr)
+                        if isinstance(value, (list, tuple)) and len(value) > 20:
+                            decompiled_code += f"# - {attr}: {str(value)[:100]}...(truncated)\n"
+                        else:
+                            decompiled_code += f"# - {attr}: {value}\n"
+                    except:
+                        pass
+            
+            # Display constants (which might contain nested code objects)
+            decompiled_code += "\n# Constants:\n"
+            for i, const in enumerate(code_obj.co_consts):
+                if isinstance(const, types.CodeType):
+                    decompiled_code += f"# [{i}] Nested code object: {const.co_name}\n"
+                else:
+                    try:
+                        # Truncate large constants
+                        const_str = str(const)
+                        if len(const_str) > 100:
+                            const_str = const_str[:100] + "...(truncated)"
+                        decompiled_code += f"# [{i}] {type(const).__name__}: {const_str}\n"
+                    except:
+                        decompiled_code += f"# [{i}] {type(const).__name__}: <unprintable>\n"
+            
+            # Display bytecode instructions in a human-readable format
+            decompiled_code += "\n# Bytecode instructions:\n"
             try:
-                uncompyle6.code_deparse(code_obj, out=output)
-                decompiled_code = output.getvalue()
-            except Exception as e:
-                decompiled_code = f"# Decompilation error: {str(e)}\n"
-                decompiled_code += f"# Code object info:\n"
-                decompiled_code += f"# - co_name: {code_obj.co_name}\n"
-                decompiled_code += f"# - co_filename: {code_obj.co_filename}\n"
-                decompiled_code += f"# - co_firstlineno: {code_obj.co_firstlineno}\n"
-                decompiled_code += f"# - co_consts: {code_obj.co_consts}\n"
+                import dis
+                bytecode_output = io.StringIO()
+                dis.dis(code_obj, file=bytecode_output)
+                decompiled_code += "# " + bytecode_output.getvalue().replace('\n', '\n# ')
+            except:
+                decompiled_code += "# (Could not disassemble bytecode)\n"
                 
             # Process nested code objects
             nested_code = ""
