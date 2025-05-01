@@ -119,7 +119,11 @@ async def analyze_file_task(update: Update, context: ContextTypes.DEFAULT_TYPE, 
         progress_message = await update.message.reply_text("⏳ Analysis in progress...")
         
         # Run the analysis
-        report_path, extracted_files = analyze_python_script(file_path, session_dir)
+        # Since analyze_python_script is CPU-bound, run it in a thread pool
+        loop = asyncio.get_running_loop()
+        report_path, extracted_files = await loop.run_in_executor(
+            None, lambda: analyze_python_script(file_path, session_dir)
+        )
         
         # Update progress
         await context.bot.edit_message_text(
@@ -256,7 +260,21 @@ async def main():
     # Start the bot
     logger.info("Bot started")
     print("[+] Bot is running...")
-    await app.run_polling()
+    
+    # Use proper shutdown for graceful termination
+    try:
+        await app.initialize()
+        await app.start()
+        await app.updater.start_polling()
+        
+        # Keep the app running until stopped
+        await asyncio.Event().wait()
+    finally:
+        await app.stop()
+        await app.shutdown()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("Bot stopped by user")
