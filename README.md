@@ -44,7 +44,7 @@ pip install python-telegram-bot uncompyle6
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/python-decompiler-bot.git
+   git clone https://github.com/YuriKhan17/python-decompiler-bot.git
    cd python-decompiler-bot
    ```
 
